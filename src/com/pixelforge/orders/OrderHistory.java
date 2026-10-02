@@ -6,11 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * In-memory order history (it is cleared when the server restarts; no database needed for the workshop).
- */
 public class OrderHistory {
-
     private final List<Order> orders = new ArrayList<>();
     private int nextId = 1;
 

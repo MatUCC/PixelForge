@@ -1,227 +1,90 @@
-# PixelForge: Patrón Decorator (Patrones de Software, UCC)
+# PixelForge
 
-## 1. El caso de estudio en 1 minuto
+PixelForge edits product photos for online stores. The customer uploads a photo, chooses treatments (remove background, resize, color filter, watermark, border, compression) in the order they want, and receives the final image with its price and processing time.
 
-**PixelForge** es un servicio que edita automáticamente fotos de producto para tiendas en línea.
-El comerciante sube una foto (unos tenis, una taza…), escoge qué tratamientos quiere **y en qué orden**,
-y recibe la imagen lista junto con el precio y el tiempo estimado.
+Live deployment: https://pixelforge-jd63.onrender.com
 
-| Tratamiento (id en el código) | Qué hace | Costo (COP) | Tiempo |
-|---|---|---|---|
-| `BASE` (siempre va) | Valida y normaliza la foto | 500 | 1 s |
-| `REMOVE_BACKGROUND` | Vuelve transparente el fondo | 1.500 | 4 s |
-| `RESIZE` | Ajusta a 1080×1080 | 300 | 1 s |
-| `COLOR_FILTER:<tipo>` | `GRAYSCALE`, `BRIGHTEN` o `HIGH_CONTRAST` | 400 | 1 s |
-| `WATERMARK:<texto>` | Escribe el nombre de la tienda | 600 | 2 s |
-| `BORDER:<color hex>` | Marco de color, ej. `FF0000` | 200 | 1 s |
-| `COMPRESSION` | Re-codifica como JPEG liviano | 250 | 1 s |
+## New feature: ready-made packages and visual styles
 
-**Reglas de negocio**
-- Un tratamiento se puede repetir (ej. dos filtros).
-- `COMPRESSION` debe ir de **último** (el JPEG pierde la transparencia). Si no, el backend responde error 400.
-- Con **4 o más** tratamientos se aplica un **10 % de descuento** automáticamente.
+The frontend now has two new controls in step 2:
 
-## 2. ¿Por qué Decorator?
+- **Visual style** (Classic, Vibrant, Fresh): changes the default filter, the default border color and the watermark color.
+- **Ready-made packages** (Marketplace ready, Social media post, Clean catalog): one click fills the pipeline with a group of treatments. The **Store name** field is written into the watermark of the package.
 
-Si lo hiciéramos con herencia tendríamos clases como `ImageWithoutBackgroundAndWatermark`,
-`ResizedImageWithFilterAndBorder`… Con 6 tratamientos son 2⁶ = 64 combinaciones, y además
-**el orden importa**, cosa que la herencia no puede representar.
+The customer can still edit, reorder or remove any treatment after choosing a package.
 
-Con Decorator cada tratamiento **envuelve** al anterior y le agrega su parte:
+New endpoints used by the frontend:
 
-```java
-ProductImage photo =
-    new CompressionDecorator(                 // 4. comprime
-        new WatermarkDecorator(               // 3. pone la marca de agua
-            new ResizeDecorator(              // 2. redimensiona
-                new RemoveBackgroundDecorator(// 1. quita el fondo
-                    new BaseImage(original))),
-            "MyStore"));
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/styles` | List of visual styles |
+| `GET /api/presets` | List of ready-made packages |
+| `GET /api/presets/apply?id=...&store=...` | A copy of a package with the store name applied |
+| `POST /api/process?treatments=...&style=...` | Now also receives the chosen style |
 
-photo.process();   // aplica las capas de adentro hacia afuera
-photo.getCost();   // 500 + 1500 + 300 + 600 + 250 = 3150
-```
+## How the patterns were applied
 
-El que usa `photo` no sabe cuántas capas tiene; solo ve un `ProductImage`.
+### Prototype
 
-## 3. Roles del patrón → clases
+- `Prototype<T>` (`prototype/Prototype.java`) is the interface with one method, `copy()`.
+- `PipelinePreset` implements `Prototype<PipelinePreset>`. It holds an id, a name, a description and a list of `TreatmentRequest`. Its `copy()` creates a new preset and copies every `TreatmentRequest` with `TreatmentRequest.copy()`, so the copy shares no mutable state with the original.
+- `PresetRegistry` stores one prototype per package (`MARKETPLACE`, `SOCIAL_MEDIA`, `CLEAN_CATALOG`). It never gives the stored object to anyone: `createCopy(id)` and `createAllCopies()` always return copies.
+- `ImageProcessingService.createPreset(...)` takes a copy and calls `withStoreName(...)` on it. Only the copy changes, so the next customer still gets the original package with the default store name.
 
-| Rol del patrón | Clase | Archivo |
-|---|---|---|
-| **Component** (interfaz común) | `ProductImage` | `core/ProductImage.java` |
-| **Concrete Component** (el objeto original) | `BaseImage` | `core/BaseImage.java` |
-| **Decorator** (abstracto, tiene un `ProductImage` adentro) | `TreatmentDecorator` | `core/TreatmentDecorator.java` |
-| **Concrete Decorators** | `RemoveBackgroundDecorator`, `ResizeDecorator`, `ColorFilterDecorator`, `WatermarkDecorator`, `BorderDecorator`, `CompressionDecorator`, `DiscountDecorator` | `treatments/` |
+### Abstract Factory
 
-Comparado con el ejemplo de clase (reproductor de música): `MusicPlayer` = `ProductImage`,
-`SimpleMusicPlayer` = `BaseImage`, `MusicPlayerDecorator` = `TreatmentDecorator`,
-`EqualizerDecorator` = cualquiera de los tratamientos.
+- `StyleFactory` (`factory/StyleFactory.java`) is the abstract factory. It declares `createFilter`, `createBorder` and `createWatermark`, which return `TreatmentDecorator` objects (the abstract product).
+- `AbstractStyleFactory` implements those three methods once. It creates `ColorFilterDecorator`, `BorderDecorator` and `WatermarkDecorator` and gets the values that change per style from three small abstract methods: `defaultFilter()`, `defaultBorderColor()` and `watermarkColor()`.
+- The concrete factories are `ClassicStyleFactory` (grayscale, black border, white text), `VibrantStyleFactory` (high contrast, red border, yellow text) and `FreshStyleFactory` (brighten, green border, mint text). Each one creates a whole family of decorators that look good together.
+- `StyleCatalog` finds a factory by id.
+- `DecoratorCatalog` calls the chosen `StyleFactory` for `COLOR_FILTER`, `BORDER` and `WATERMARK`. If the request has no parameter, the style default is used. If it has a parameter, that value wins.
 
-**Dato clave:** `TreatmentDecorator.process()` hace exactamente lo mismo que `play()` en el ejemplo de clase:
-primero llama al objeto envuelto (`wrapped.process()`) y luego agrega lo suyo (`applyTo(...)`).
+### Builder
 
-`DiscountDecorator` es un caso especial: **no toca la imagen**, solo cambia el precio. Muestra que un
-decorador puede extender solo una parte del comportamiento.
+- `PipelineBuilder` (`pipeline/PipelineBuilder.java`) is the builder interface: `reset()`, `photo(...)`, `style(...)`, `addTreatment(...)` and `build()`. Every method except `build()` returns the builder, so the calls are chained.
+- `DecoratorPipelineBuilder` is the concrete builder. It stores the photo, the style and the list of treatments. When `build()` is called it asks `PipelineValidator` to check the rules, starts with a `BaseImage`, wraps it with one decorator per treatment (created by `DecoratorCatalog`) and adds a `DiscountDecorator` when there are 4 or more treatments. The product is a `ProductImage`.
+- `PipelineDirector` is the director. `construct(...)` builds a pipeline from a list of requests, and `constructMarketplacePhoto(...)` builds a fixed recipe (remove background, resize, watermark, compression).
+- `ImageProcessingService` creates a new builder for every request, so requests running at the same time do not share state.
 
-```mermaid
-classDiagram
-    class ProductImage {
-        <<interface>>
-        +process() BufferedImage
-        +getCost() int
-        +getProcessingSeconds() int
-        +getDescription() String
-        +getLayers() List~LayerInfo~
-    }
-    class BaseImage
-    class TreatmentDecorator {
-        <<abstract>>
-        #wrapped : ProductImage
-        #applyTo(BufferedImage) BufferedImage
-    }
-    ProductImage <|.. BaseImage
-    ProductImage <|.. TreatmentDecorator
-    TreatmentDecorator o--> ProductImage : wrapped
-    TreatmentDecorator <|-- RemoveBackgroundDecorator
-    TreatmentDecorator <|-- ResizeDecorator
-    TreatmentDecorator <|-- ColorFilterDecorator
-    TreatmentDecorator <|-- WatermarkDecorator
-    TreatmentDecorator <|-- BorderDecorator
-    TreatmentDecorator <|-- CompressionDecorator
-    TreatmentDecorator <|-- DiscountDecorator
-```
+### Decorator
 
-## 4. Estructura del proyecto
+- `ProductImage` is the component interface: `process()`, `getCost()`, `getProcessingSeconds()`, `getDescription()` and `getLayers()`.
+- `BaseImage` is the concrete component. It is the original photo, always at the center of the chain.
+- `TreatmentDecorator` is the abstract decorator. It implements `ProductImage` and holds another `ProductImage` in the `wrapped` field. Its `process()` first calls `wrapped.process()` and then `applyTo(...)`. Its cost, time, description and layers add its own values to the ones from `wrapped`.
+- The concrete decorators (`treatments/` package) are `RemoveBackgroundDecorator`, `ResizeDecorator`, `ColorFilterDecorator`, `WatermarkDecorator`, `BorderDecorator`, `CompressionDecorator` and `DiscountDecorator`. Each one only implements `applyTo(...)` (and overrides its own cost or name when needed).
+- `DiscountDecorator` does not change the image. It only overrides `getOwnCost()` to return a negative value.
+- The builder creates the chain in the same order the customer chose, because the order of the wrappers is the order of the treatments.
+
+## Project structure
 
 ```
 src/com/pixelforge/
-├── Main.java                  Demo por consola (arma los decoradores "a mano")
-├── core/                      El patrón: interfaz, componente base, decorador abstracto
-│   ├── ProductImage.java
-│   ├── BaseImage.java
-│   ├── TreatmentDecorator.java
-│   ├── TreatmentType.java     Catálogo con precios y tiempos (único lugar donde están)
-│   └── LayerInfo.java         Una fila del desglose de costos
-├── treatments/                Decoradores concretos (uno por tratamiento)
-├── pipeline/
-│   ├── TreatmentRequest.java  Convierte "WATERMARK:MyStore" en un objeto
-│   └── PipelineBuilder.java   Arma la cadena en el orden pedido + reglas de negocio
-├── orders/                    Historial de pedidos (en memoria)
-├── service/
-│   └── ImageProcessingService.java   Caso de uso: procesar una foto
-└── api/
-    ├── ApiServer.java         API REST para el frontend
-    └── Json.java              Convierte objetos a JSON
-test/com/pixelforge/
-└── DecoratorTests.java        6 pruebas (sin JUnit)
-frontend/                      Interfaz web (HTML + CSS + JS, sin dependencias)
-├── index.html
-├── app.js                     Sube la foto, arma el pipeline, muestra capas y costos
-├── styles.css
-└── config.js                  URL del backend (vacío = mismo servidor)
-Dockerfile                     Imagen de producción (compila, corre pruebas y sirve API + frontend)
-render.yaml                    Blueprint para desplegar en Render
+├── Main.java                         Console demo
+├── core/                             ProductImage, BaseImage, TreatmentDecorator, TreatmentType, LayerInfo
+├── treatments/                       Concrete decorators
+├── factory/                          StyleFactory, AbstractStyleFactory, Classic/Vibrant/Fresh factories, StyleCatalog
+├── prototype/                        Prototype, PipelinePreset, PresetRegistry
+├── pipeline/                         PipelineBuilder, DecoratorPipelineBuilder, PipelineDirector,
+│                                     PipelineValidator, DecoratorCatalog, DecoratorCreator, TreatmentRequest
+├── orders/                           Order, OrderHistory
+├── service/                          ImageProcessingService
+└── api/                              ApiServer, Json
+test/com/pixelforge/                  DecoratorTests, PatternTests
+frontend/                             index.html, app.js, styles.css, config.js
 ```
 
-Solo usa Java estándar (JDK 11 o superior). **No necesita Maven ni librerías.**
+## Run it
 
-## 5. Cómo ejecutarlo
-
-**Desde IntelliJ / VS Code:** abrir la carpeta, marcar `src` y `test` como carpetas de código fuente, y ejecutar:
-- `Main` → demo por consola; guarda imágenes en la carpeta `output/`
-- `DecoratorTests` → corre las pruebas
-- `ApiServer` → levanta el API **y el frontend** en `http://localhost:8080` (ejecutar desde la raíz del proyecto para que encuentre la carpeta `frontend/`)
-
-**Desde la terminal** (dentro de la carpeta del proyecto):
-```bash
+```
 javac -d out $(find src test -name "*.java")
-java -cp out com.pixelforge.Main            # demo
-java -cp out com.pixelforge.DecoratorTests  # pruebas
-java -cp out com.pixelforge.api.ApiServer   # API + frontend en http://localhost:8080
-```
-En Windows (PowerShell), compilar con:
-`javac -d out (Get-ChildItem -Recurse -Filter *.java src,test).FullName`
-
-## 6. API para el frontend
-
-CORS está habilitado, así que el frontend puede abrirse desde cualquier puerto o como archivo.
-
-### `GET /api/health`
-Responde `{"status":"ok"}`. Lo usa la plataforma de hosting para saber si el servicio está vivo.
-
-### `GET /api/treatments`
-Catálogo para construir el menú dinámicamente:
-```json
-[{"id":"WATERMARK","name":"Watermark","cost":600,"seconds":2,"parameterHint":"text to print"}, ...]
+java -cp out com.pixelforge.DecoratorTests
+java -cp out com.pixelforge.PatternTests
+java -cp out com.pixelforge.api.ApiServer
 ```
 
-### `POST /api/process?treatments=<lista>`
-- **Body:** los bytes de la imagen tal cual (JPG o PNG, máx. 5 MB). No es multipart.
-- **`treatments`:** lista separada por comas **en el orden** que eligió el usuario. Parámetros con `:`.
-  Ej.: `REMOVE_BACKGROUND,RESIZE,WATERMARK:Mi Tienda,BORDER:FF0000,COMPRESSION`
+Then open http://localhost:8080.
 
-Respuesta 200:
-```json
-{
-  "order": {
-    "id": 1,
-    "description": "Base image + Remove background + ... + Discount 10%",
-    "totalCost": 2835,
-    "totalSeconds": 9,
-    "layers": [{"name":"Base image","cost":500,"seconds":1}, ..., {"name":"Discount 10%","cost":-315,"seconds":0}]
-  },
-  "imageFormat": "jpg",
-  "imageBase64": "/9j/4AAQ..."
-}
-```
-`layers` viene **de adentro hacia afuera**: sirve para dibujar las capas anidadas del decorador y la tabla de costos.
+## Developers
 
-Error 400 (regla de negocio o dato inválido):
-```json
-{"error": "COMPRESSION must be the last treatment"}
-```
-
-### `GET /api/orders`
-Lista de pedidos procesados (mismo formato que `order`).
-
-### Ejemplo con `fetch`
-```js
-const file = document.querySelector('#photo').files[0];
-const treatments = ['REMOVE_BACKGROUND', 'RESIZE', 'WATERMARK:Mi Tienda', 'COMPRESSION'];
-
-const res = await fetch(
-  'http://localhost:8080/api/process?treatments=' + encodeURIComponent(treatments.join(',')),
-  { method: 'POST', body: file }
-);
-const data = await res.json();
-if (!res.ok) { alert(data.error); return; }
-
-document.querySelector('#result').src = `data:image/${data.imageFormat};base64,${data.imageBase64}`;
-console.log(data.order.layers); // desglose por capa
-```
-
-## 7. ¿Cómo agrego un tratamiento nuevo?
-
-1. Agregar una constante en `TreatmentType` (nombre, costo, tiempo).
-2. Crear `XxxDecorator extends TreatmentDecorator` e implementar `applyTo(...)`.
-3. Agregar un `case` en `PipelineBuilder.wrap(...)`.
-
-No hay que modificar `BaseImage` ni los demás decoradores (principio **abierto/cerrado**).
-La prueba `newDecoratorWorksWithoutChangingExistingClasses` lo demuestra.
-
-## 8. Variables de entorno
-
-| Variable | Por defecto | Para qué |
-|---|---|---|
-| `PORT` | `8080` | Puerto donde escucha (Render/Railway lo asignan solos) |
-| `FRONTEND_DIR` | `frontend` | Carpeta con `index.html` |
-| `ALLOWED_ORIGIN` | `*` | Valor de `Access-Control-Allow-Origin` (pon la URL de tu frontend si lo publicas aparte) |
-
-## 9. Despliegue con Docker
-
-```bash
-docker build -t pixelforge .          # compila y corre las 6 pruebas (si fallan, no se construye)
-docker run -p 8080:8080 pixelforge    # abrir http://localhost:8080
-```
-
-> El historial de pedidos vive en memoria: se borra al reiniciar el servidor.
+- Juan Esteban Cuaran Santander
+- Nicolas Mora

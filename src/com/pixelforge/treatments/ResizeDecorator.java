@@ -8,14 +8,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 
-/**
- * DECORATOR PATTERN - Role: CONCRETE DECORATOR
- *
- * Fits the photo into a 1080x1080 square (the usual marketplace format),
- * keeping its proportions and centering it.
- */
 public class ResizeDecorator extends TreatmentDecorator {
-
     private static final int TARGET_SIZE = 1080;
 
     public ResizeDecorator(ProductImage wrapped) {

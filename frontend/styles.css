@@ -62,8 +62,6 @@ body {
   line-height: 1.45;
 }
 
-/* ---------- Encabezado ---------- */
-
 .topbar {
   background: linear-gradient(120deg, var(--accent), var(--accent-2));
   color: #fff;
@@ -89,8 +87,6 @@ body {
   border-color: rgba(255, 255, 255, .3);
   color: #fff;
 }
-
-/* ---------- Distribución ---------- */
 
 .layout {
   max-width: 1200px;
@@ -122,8 +118,6 @@ body {
 .row h2 { margin: 0; }
 .muted { color: var(--muted); }
 
-/* ---------- Foto ---------- */
-
 .dropzone {
   display: flex;
   align-items: center;
@@ -142,8 +136,6 @@ body {
 .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-soft); }
 .dropzone .icon { font-size: 40px; }
 .dropzone img { max-width: 100%; max-height: 320px; border-radius: 8px; }
-
-/* ---------- Botones ---------- */
 
 button, .button {
   font: inherit;
@@ -173,8 +165,6 @@ button:focus-visible, .button:focus-visible, input:focus-visible, select:focus-v
 }
 .primary:hover { filter: brightness(1.08); border-color: transparent; }
 #processBtn { width: 100%; justify-content: center; padding: 13px; margin-top: 14px; font-weight: 600; font-size: 16px; }
-
-/* ---------- Catálogo y pipeline ---------- */
 
 .catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .treatment { text-align: left; padding: 10px 12px; gap: 10px; }
@@ -221,11 +211,9 @@ button:focus-visible, .button:focus-visible, input:focus-visible, select:focus-v
 .warning { background: var(--warn-bg); color: var(--warn); padding: 10px 12px; border-radius: 10px; }
 .error { color: var(--danger); background: var(--danger-soft); padding: 10px 12px; border-radius: 10px; font-weight: 600; }
 
-/* ---------- Resultado ---------- */
-
 .result { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
 .result-image { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
-.checker { background: repeating-conic-gradient(#d6d6d6 0 25%, #fff 0 50%) 0 0 / 16px 16px; } /* deja ver la transparencia */
+.checker { background: repeating-conic-gradient(#d6d6d6 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
 .result-image img { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); }
 
 .nested > div, .nested div div {
@@ -245,3 +233,11 @@ button:focus-visible, .button:focus-visible, input:focus-visible, select:focus-v
 .table tfoot th { font-size: 15px; }
 .table .num { white-space: nowrap; }
 .negative { color: var(--ok); }
+
+.options { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px; }
+.options label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.options select, .options input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; }
+.preset { text-align: left; padding: 12px; gap: 4px; flex-direction: column; align-items: flex-start; }
+.preset:hover { background: var(--accent-soft); }
+.preset small { color: var(--muted); }
+.style-default { font-size: 12px; color: var(--muted); font-style: italic; }

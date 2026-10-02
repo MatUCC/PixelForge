@@ -11,21 +11,21 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 
-/**
- * DECORATOR PATTERN - Role: CONCRETE DECORATOR
- *
- * Writes the store name in the bottom-right corner, semi-transparent.
- */
 public class WatermarkDecorator extends TreatmentDecorator {
-
     private final String text;
+    private final Color textColor;
 
     public WatermarkDecorator(ProductImage wrapped, String text) {
+        this(wrapped, text, Color.WHITE);
+    }
+
+    public WatermarkDecorator(ProductImage wrapped, String text, Color textColor) {
         super(wrapped, TreatmentType.WATERMARK);
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Watermark needs a text, e.g. WATERMARK:MyStore");
         }
         this.text = text;
+        this.textColor = textColor;
     }
 
     @Override
@@ -48,8 +48,8 @@ public class WatermarkDecorator extends TreatmentDecorator {
 
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f));
         g.setColor(Color.BLACK);
-        g.drawString(text, x + 2, y + 2); // shadow, so it is readable on light backgrounds
-        g.setColor(Color.WHITE);
+        g.drawString(text, x + 2, y + 2);
+        g.setColor(textColor);
         g.drawString(text, x, y);
         g.dispose();
         return image;

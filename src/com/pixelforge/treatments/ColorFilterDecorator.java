@@ -6,15 +6,21 @@ import com.pixelforge.core.TreatmentType;
 
 import java.awt.image.BufferedImage;
 
-/**
- * DECORATOR PATTERN - Role: CONCRETE DECORATOR
- *
- * Applies one color filter. It can be stacked more than once
- * (e.g. BRIGHTEN and then GRAYSCALE), which shows that decorators can repeat.
- */
 public class ColorFilterDecorator extends TreatmentDecorator {
+    public enum FilterType {
+        GRAYSCALE, BRIGHTEN, HIGH_CONTRAST;
 
-    public enum FilterType { GRAYSCALE, BRIGHTEN, HIGH_CONTRAST }
+        public static FilterType fromText(String text) {
+            if (text == null) {
+                throw new IllegalArgumentException("COLOR_FILTER needs a type, e.g. COLOR_FILTER:GRAYSCALE");
+            }
+            try {
+                return valueOf(text.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Unknown filter: " + text + " (use GRAYSCALE, BRIGHTEN or HIGH_CONTRAST)");
+            }
+        }
+    }
 
     private final FilterType filter;
 

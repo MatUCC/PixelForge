@@ -3,8 +3,15 @@ package com.pixelforge.service;
 import com.pixelforge.core.ProductImage;
 import com.pixelforge.orders.Order;
 import com.pixelforge.orders.OrderHistory;
-import com.pixelforge.pipeline.PipelineBuilder;
+import com.pixelforge.factory.StyleCatalog;
+import com.pixelforge.factory.StyleFactory;
+import com.pixelforge.pipeline.DecoratorCatalog;
+import com.pixelforge.pipeline.DecoratorPipelineBuilder;
+import com.pixelforge.pipeline.PipelineDirector;
+import com.pixelforge.pipeline.PipelineValidator;
 import com.pixelforge.pipeline.TreatmentRequest;
+import com.pixelforge.prototype.PipelinePreset;
+import com.pixelforge.prototype.PresetRegistry;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -14,32 +21,40 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Entry point for the use case "process a product photo".
- * Used by both the HTTP API and the console demo, so the logic lives in one place.
- */
 public class ImageProcessingService {
+    public static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-    public static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
-
-    private final PipelineBuilder pipelineBuilder = new PipelineBuilder();
+    private final DecoratorCatalog decoratorCatalog = new DecoratorCatalog();
+    private final PipelineValidator validator = new PipelineValidator();
+    private final StyleCatalog styleCatalog = new StyleCatalog();
+    private final PresetRegistry presetRegistry = new PresetRegistry();
     private final OrderHistory orderHistory = new OrderHistory();
 
-    /**
-     * @param imageBytes    raw JPG/PNG file
-     * @param treatmentList comma-separated list, e.g. "REMOVE_BACKGROUND,RESIZE,WATERMARK:MyStore"
-     */
-    public ProcessingResult process(byte[] imageBytes, String treatmentList) throws IOException {
+    public ProcessingResult process(byte[] imageBytes, String treatmentList, String styleId) throws IOException {
         if (imageBytes.length == 0 || imageBytes.length > MAX_IMAGE_BYTES) {
             throw new IllegalArgumentException("The image must be between 1 byte and 5 MB");
         }
         BufferedImage photo = ImageIO.read(new ByteArrayInputStream(imageBytes));
 
-        ProductImage pipeline = pipelineBuilder.build(photo, parseList(treatmentList));
+        StyleFactory style = styleCatalog.find(styleId);
+        PipelineDirector director = new PipelineDirector(new DecoratorPipelineBuilder(decoratorCatalog, validator));
+        ProductImage pipeline = director.construct(photo, style, parseList(treatmentList));
         BufferedImage finalImage = pipeline.process();
         Order order = orderHistory.register(pipeline);
 
         return new ProcessingResult(order, finalImage);
+    }
+
+    public List<StyleFactory> getStyles() {
+        return styleCatalog.findAll();
+    }
+
+    public List<PipelinePreset> getPresets() {
+        return presetRegistry.createAllCopies();
+    }
+
+    public PipelinePreset createPreset(String presetId, String storeName) {
+        return presetRegistry.createCopy(presetId).withStoreName(storeName);
     }
 
     public List<Order> getOrders() {
@@ -59,9 +74,7 @@ public class ImageProcessingService {
         return requests;
     }
 
-    /** What the customer gets back: the saved order and the final image. */
     public static class ProcessingResult {
-
         private final Order order;
         private final BufferedImage image;
 
@@ -78,7 +91,6 @@ public class ImageProcessingService {
             return image;
         }
 
-        /** JPEG if the image was compressed (no transparency), PNG otherwise. */
         public String getFormat() {
             return image.getColorModel().hasAlpha() ? "png" : "jpg";
         }

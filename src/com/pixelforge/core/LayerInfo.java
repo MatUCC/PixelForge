@@ -1,11 +1,6 @@
 package com.pixelforge.core;
 
-/**
- * Simple data object describing one layer of the decorator stack.
- * Used to show the cost/time breakdown per treatment.
- */
 public class LayerInfo {
-
     private final String name;
     private final int cost;
     private final int seconds;

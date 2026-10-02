@@ -5,11 +5,7 @@ import com.pixelforge.core.LayerInfo;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * A processed request saved in the history, including the decorator stack that was applied.
- */
 public class Order {
-
     private final int id;
     private final LocalDateTime createdAt;
     private final String description;

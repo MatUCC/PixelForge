@@ -1,5 +1,6 @@
 package com.pixelforge.api;
 
+import com.pixelforge.prototype.PipelinePreset;
 import com.pixelforge.service.ImageProcessingService;
 import com.pixelforge.service.ImageProcessingService.ProcessingResult;
 import com.sun.net.httpserver.HttpExchange;
@@ -18,22 +19,7 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.Executors;
 
-/**
- * REST API for the frontend, using the HTTP server included in the JDK (no frameworks).
- *
- *   GET  /api/health                           -> "ok" (used by the hosting platform)
- *   GET  /api/treatments                       -> catalog of treatments (to build the menu)
- *   POST /api/process?treatments=A,B:param,... -> body = raw image bytes; returns order + final image in Base64
- *   GET  /api/orders                           -> order history
- *   GET  /                                     -> the frontend (static files from the "frontend" folder)
- *
- * Configuration through environment variables (all optional):
- *   PORT            port to listen on (default 8080; Render/Railway set it automatically)
- *   FRONTEND_DIR    folder with index.html (default "frontend")
- *   ALLOWED_ORIGIN  value for Access-Control-Allow-Origin (default "*")
- */
 public class ApiServer {
-
     private static final Map<String, String> CONTENT_TYPES = Map.of(
             "html", "text/html; charset=utf-8",
             "css", "text/css; charset=utf-8",
@@ -54,7 +40,7 @@ public class ApiServer {
     }
 
     public static void main(String[] args) throws IOException {
-        System.setProperty("java.awt.headless", "true"); // servers have no screen
+        System.setProperty("java.awt.headless", "true");
         int port = Integer.parseInt(env("PORT", "8080"));
         new ApiServer(Paths.get(env("FRONTEND_DIR", "frontend")), env("ALLOWED_ORIGIN", "*")).start(port);
     }
@@ -65,8 +51,11 @@ public class ApiServer {
         server.createContext("/api/treatments", this::handleTreatments);
         server.createContext("/api/process", this::handleProcess);
         server.createContext("/api/orders", this::handleOrders);
+        server.createContext("/api/styles", this::handleStyles);
+        server.createContext("/api/presets", this::handlePresets);
+        server.createContext("/api/presets/apply", this::handlePresetApply);
         server.createContext("/", this::handleStatic);
-        server.setExecutor(Executors.newFixedThreadPool(8)); // the default executor handles one request at a time
+        server.setExecutor(Executors.newFixedThreadPool(8));
         server.start();
         System.out.println("PixelForge running on http://localhost:" + port + "  (frontend: " + frontendDir + ")");
     }
@@ -87,6 +76,32 @@ public class ApiServer {
         send(exchange, 200, Json.treatments());
     }
 
+    private void handleStyles(HttpExchange exchange) throws IOException {
+        if (handlePreflight(exchange) || !requireMethod(exchange, "GET")) {
+            return;
+        }
+        send(exchange, 200, Json.styles(service.getStyles()));
+    }
+
+    private void handlePresets(HttpExchange exchange) throws IOException {
+        if (handlePreflight(exchange) || !requireMethod(exchange, "GET")) {
+            return;
+        }
+        send(exchange, 200, Json.presets(service.getPresets()));
+    }
+
+    private void handlePresetApply(HttpExchange exchange) throws IOException {
+        if (handlePreflight(exchange) || !requireMethod(exchange, "GET")) {
+            return;
+        }
+        try {
+            PipelinePreset preset = service.createPreset(getQueryParam(exchange, "id"), getQueryParam(exchange, "store"));
+            send(exchange, 200, Json.preset(preset));
+        } catch (IllegalArgumentException e) {
+            send(exchange, 400, Json.error(e.getMessage()));
+        }
+    }
+
     private void handleOrders(HttpExchange exchange) throws IOException {
         if (handlePreflight(exchange) || !requireMethod(exchange, "GET")) {
             return;
@@ -102,12 +117,12 @@ public class ApiServer {
             byte[] imageBytes = readBody(exchange, ImageProcessingService.MAX_IMAGE_BYTES);
             String treatments = getQueryParam(exchange, "treatments");
 
-            ProcessingResult result = service.process(imageBytes, treatments);
+            ProcessingResult result = service.process(imageBytes, treatments, getQueryParam(exchange, "style"));
 
             String base64 = Base64.getEncoder().encodeToString(result.getImageBytes());
             send(exchange, 200, Json.processResult(result.getOrder(), result.getFormat(), base64));
         } catch (IllegalArgumentException e) {
-            send(exchange, 400, Json.error(e.getMessage())); // business rule or bad input
+            send(exchange, 400, Json.error(e.getMessage()));
         } catch (IOException e) {
             send(exchange, 400, Json.error("The image could not be read (only JPG or PNG are supported)"));
         } catch (RuntimeException e) {
@@ -115,14 +130,13 @@ public class ApiServer {
         }
     }
 
-    /** Serves the frontend. Unknown paths fall back to index.html. */
     private void handleStatic(HttpExchange exchange) throws IOException {
         if (!requireMethod(exchange, "GET")) {
             return;
         }
         String requested = URLDecoder.decode(exchange.getRequestURI().getPath(), StandardCharsets.UTF_8);
         Path file = frontendDir.resolve(requested.substring(1)).normalize();
-        if (!file.startsWith(frontendDir)) { // blocks "../" tricks
+        if (!file.startsWith(frontendDir)) {
             send(exchange, 404, Json.error("Not found"));
             return;
         }
@@ -146,9 +160,6 @@ public class ApiServer {
         }
     }
 
-    // ---------- small HTTP helpers ----------
-
-    /** Reads at most maxBytes + 1, so a huge upload is rejected without loading it all into memory. */
     private byte[] readBody(HttpExchange exchange, int maxBytes) throws IOException {
         try (InputStream input = exchange.getRequestBody()) {
             byte[] body = input.readNBytes(maxBytes + 1);

@@ -17,15 +17,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
-/**
- * DECORATOR PATTERN - Role: CONCRETE DECORATOR
- *
- * Re-encodes the photo as a lighter JPEG for the web.
- * JPEG has no transparency, so transparent areas become white.
- * That is why the business rule says compression must always be the LAST layer.
- */
 public class CompressionDecorator extends TreatmentDecorator {
-
     private static final float JPEG_QUALITY = 0.6f;
 
     public CompressionDecorator(ProductImage wrapped) {

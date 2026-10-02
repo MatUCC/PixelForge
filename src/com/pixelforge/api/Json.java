@@ -2,16 +2,14 @@ package com.pixelforge.api;
 
 import com.pixelforge.core.LayerInfo;
 import com.pixelforge.core.TreatmentType;
+import com.pixelforge.factory.StyleFactory;
 import com.pixelforge.orders.Order;
+import com.pixelforge.pipeline.TreatmentRequest;
+import com.pixelforge.prototype.PipelinePreset;
 
 import java.util.List;
 
-/**
- * Tiny hand-written JSON serializer, so the project needs no external libraries.
- * Only covers the objects this API returns.
- */
 public final class Json {
-
     private Json() {
     }
 
@@ -63,6 +61,51 @@ public final class Json {
                 + "\"imageFormat\":" + quote(format) + ','
                 + "\"imageBase64\":" + quote(imageBase64)
                 + "}";
+    }
+
+    public static String styles(List<StyleFactory> styles) {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < styles.size(); i++) {
+            if (i > 0) {
+                json.append(',');
+            }
+            json.append('{')
+                .append("\"id\":").append(quote(styles.get(i).getId())).append(',')
+                .append("\"name\":").append(quote(styles.get(i).getDisplayName()))
+                .append('}');
+        }
+        return json.append(']').toString();
+    }
+
+    public static String preset(PipelinePreset preset) {
+        StringBuilder treatments = new StringBuilder("[");
+        for (TreatmentRequest request : preset.getTreatments()) {
+            if (treatments.length() > 1) {
+                treatments.append(',');
+            }
+            treatments.append('{')
+                .append("\"id\":").append(quote(request.getType().name())).append(',')
+                .append("\"parameter\":").append(request.getParameter() == null ? "null" : quote(request.getParameter()))
+                .append('}');
+        }
+        treatments.append(']');
+        return "{"
+                + "\"id\":" + quote(preset.getId()) + ','
+                + "\"name\":" + quote(preset.getName()) + ','
+                + "\"description\":" + quote(preset.getDescription()) + ','
+                + "\"treatments\":" + treatments
+                + "}";
+    }
+
+    public static String presets(List<PipelinePreset> presets) {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < presets.size(); i++) {
+            if (i > 0) {
+                json.append(',');
+            }
+            json.append(preset(presets.get(i)));
+        }
+        return json.append(']').toString();
     }
 
     public static String error(String message) {

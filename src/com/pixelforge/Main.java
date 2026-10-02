@@ -3,6 +3,14 @@ package com.pixelforge;
 import com.pixelforge.core.BaseImage;
 import com.pixelforge.core.LayerInfo;
 import com.pixelforge.core.ProductImage;
+import com.pixelforge.factory.StyleCatalog;
+import com.pixelforge.factory.StyleFactory;
+import com.pixelforge.pipeline.DecoratorCatalog;
+import com.pixelforge.pipeline.DecoratorPipelineBuilder;
+import com.pixelforge.pipeline.PipelineDirector;
+import com.pixelforge.pipeline.PipelineValidator;
+import com.pixelforge.prototype.PipelinePreset;
+import com.pixelforge.prototype.PresetRegistry;
 import com.pixelforge.treatments.BorderDecorator;
 import com.pixelforge.treatments.ColorFilterDecorator;
 import com.pixelforge.treatments.ColorFilterDecorator.FilterType;
@@ -18,23 +26,15 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
-/**
- * Console demo of the case study (no server, no frontend needed).
- * It builds the decorators BY HAND so the pattern is easy to see,
- * and saves the resulting images in the "output" folder.
- */
 public class Main {
-
     public static void main(String[] args) throws IOException {
         BufferedImage photo = createSamplePhoto();
         new File("output").mkdirs();
         ImageIO.write(photo, "png", new File("output/0-original.png"));
 
-        // 1) Only the base image: no decorators
         ProductImage plain = new BaseImage(photo);
         printSummary("1) Base image only", plain);
 
-        // 2) Stacking decorators: each "new" wraps the previous object
         ProductImage forMarketplace =
                 new CompressionDecorator(
                         new WatermarkDecorator(
@@ -45,7 +45,6 @@ public class Main {
         printSummary("2) Marketplace-ready photo", forMarketplace);
         ImageIO.write(forMarketplace.process(), "jpg", new File("output/1-marketplace.jpg"));
 
-        // 3) Same treatments, different order -> different result
         ProductImage grayThenBorder = new BorderDecorator(
                 new ColorFilterDecorator(new BaseImage(photo), FilterType.GRAYSCALE), "FF0000");
         ProductImage borderThenGray = new ColorFilterDecorator(
@@ -68,7 +67,6 @@ public class Main {
         System.out.printf("   TOTAL: $%,d COP, %d s%n", image.getCost(), image.getProcessingSeconds());
     }
 
-    /** Draws a fake product photo: a blue mug-like shape on a light gray studio background. */
     private static BufferedImage createSamplePhoto() {
         BufferedImage photo = new BufferedImage(800, 600, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = photo.createGraphics();

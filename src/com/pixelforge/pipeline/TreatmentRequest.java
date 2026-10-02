@@ -2,13 +2,7 @@ package com.pixelforge.pipeline;
 
 import com.pixelforge.core.TreatmentType;
 
-/**
- * One treatment the customer asked for, with its optional parameter.
- * Text format used by the API: "TYPE" or "TYPE:parameter",
- * e.g. "RESIZE", "WATERMARK:MyStore", "BORDER:FF0000", "COLOR_FILTER:GRAYSCALE".
- */
 public class TreatmentRequest {
-
     private final TreatmentType type;
     private final String parameter;
 
@@ -31,6 +25,10 @@ public class TreatmentRequest {
         if (!type.isSelectable()) {
             throw new IllegalArgumentException(typeName + " is added by the system and cannot be requested");
         }
+        return new TreatmentRequest(type, parameter);
+    }
+
+    public TreatmentRequest copy() {
         return new TreatmentRequest(type, parameter);
     }
 

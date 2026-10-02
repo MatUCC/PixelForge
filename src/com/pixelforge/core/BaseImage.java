@@ -4,14 +4,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DECORATOR PATTERN - Role: CONCRETE COMPONENT
- *
- * The original photo uploaded by the store. It is the innermost object:
- * every decorator ends up wrapping one of these.
- */
 public class BaseImage implements ProductImage {
-
     private final BufferedImage original;
 
     public BaseImage(BufferedImage original) {
@@ -23,8 +16,6 @@ public class BaseImage implements ProductImage {
 
     @Override
     public BufferedImage process() {
-        // "Validation and normalization": we always work on an ARGB copy,
-        // so decorators can use transparency and the original is never modified.
         BufferedImage copy = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
         copy.getGraphics().drawImage(original, 0, 0, null);
         return copy;

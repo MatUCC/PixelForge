@@ -1,18 +1,12 @@
 package com.pixelforge.core;
 
-/**
- * Catalog of everything PixelForge can do to a photo, with its price and time.
- * Keeping the prices here (and only here) avoids repeating numbers in every class.
- */
 public enum TreatmentType {
-
-    //               display name          cost (COP)  seconds  parameter the user must send
     BASE            ("Base image",          500,        1,       null),
     REMOVE_BACKGROUND("Remove background",  1500,       4,       null),
     RESIZE          ("Resize 1080x1080",    300,        1,       null),
-    COLOR_FILTER    ("Color filter",        400,        1,       "GRAYSCALE | BRIGHTEN | HIGH_CONTRAST"),
+    COLOR_FILTER    ("Color filter",        400,        1,       "GRAYSCALE | BRIGHTEN | HIGH_CONTRAST (empty = style default)"),
     WATERMARK       ("Watermark",           600,        2,       "text to print"),
-    BORDER          ("Border",              200,        1,       "hex color, e.g. FF0000"),
+    BORDER          ("Border",              200,        1,       "hex color, e.g. FF0000 (empty = style default)"),
     COMPRESSION     ("Web compression",     250,        1,       null),
     DISCOUNT        ("Discount 10%",        0,          0,       null);
 
@@ -40,12 +34,10 @@ public enum TreatmentType {
         return seconds;
     }
 
-    /** null when the treatment needs no parameter. */
     public String getParameterHint() {
         return parameterHint;
     }
 
-    /** True for treatments the customer can choose (BASE and DISCOUNT are added by the system). */
     public boolean isSelectable() {
         return this != BASE && this != DISCOUNT;
     }

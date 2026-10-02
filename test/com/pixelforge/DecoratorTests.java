@@ -3,7 +3,11 @@ package com.pixelforge;
 import com.pixelforge.core.BaseImage;
 import com.pixelforge.core.ProductImage;
 import com.pixelforge.core.TreatmentDecorator;
-import com.pixelforge.pipeline.PipelineBuilder;
+import com.pixelforge.pipeline.DecoratorCatalog;
+import com.pixelforge.pipeline.DecoratorPipelineBuilder;
+import com.pixelforge.pipeline.PipelineDirector;
+import com.pixelforge.pipeline.PipelineValidator;
+import com.pixelforge.factory.ClassicStyleFactory;
 import com.pixelforge.pipeline.TreatmentRequest;
 import com.pixelforge.treatments.BorderDecorator;
 import com.pixelforge.treatments.ColorFilterDecorator;
@@ -17,11 +21,7 @@ import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Plain-Java tests (no JUnit needed). Run DecoratorTests.main; it fails with an exception if something is wrong.
- */
 public class DecoratorTests {
-
     private static int passed = 0;
 
     public static void main(String[] args) {
@@ -67,7 +67,7 @@ public class DecoratorTests {
         List<TreatmentRequest> requests = Arrays.asList(
                 TreatmentRequest.parse("COMPRESSION"), TreatmentRequest.parse("RESIZE"));
         try {
-            new PipelineBuilder().build(samplePhoto(), requests);
+            build(requests);
             throw new AssertionError("COMPRESSION in the middle should be rejected");
         } catch (IllegalArgumentException expected) {
             ok("Business rule: COMPRESSION must be last");
@@ -80,21 +80,17 @@ public class DecoratorTests {
                 TreatmentRequest.parse("RESIZE"),
                 TreatmentRequest.parse("WATERMARK:MyStore"),
                 TreatmentRequest.parse("COMPRESSION"));
-        ProductImage image = new PipelineBuilder().build(samplePhoto(), requests);
+        ProductImage image = build(requests);
 
-        int fullPrice = 500 + 1500 + 300 + 600 + 250; // 3150
+        int fullPrice = 500 + 1500 + 300 + 600 + 250;
         check(image.getCost() == fullPrice - fullPrice / 10, "expected 10% off, got " + image.getCost());
         ok("Business rule: 10% discount with 4+ treatments");
     }
 
-    /**
-     * Open/Closed principle: a brand-new treatment written here, inside the test,
-     * plugs into the chain without modifying BaseImage or any other decorator.
-     */
     static void newDecoratorWorksWithoutChangingExistingClasses() {
         class InvertColorsDecorator extends TreatmentDecorator {
             InvertColorsDecorator(ProductImage wrapped) {
-                super(wrapped, TreatmentType.COLOR_FILTER); // reuses an existing price for the demo
+                super(wrapped, TreatmentType.COLOR_FILTER);
             }
 
             @Override
@@ -113,7 +109,11 @@ public class DecoratorTests {
         ok("A new decorator works without modifying existing classes (Open/Closed)");
     }
 
-    // ---------- helpers ----------
+    private static ProductImage build(List<TreatmentRequest> requests) {
+        PipelineDirector director = new PipelineDirector(
+                new DecoratorPipelineBuilder(new DecoratorCatalog(), new PipelineValidator()));
+        return director.construct(samplePhoto(), new ClassicStyleFactory(), requests);
+    }
 
     private static BufferedImage samplePhoto() {
         BufferedImage photo = new BufferedImage(100, 80, BufferedImage.TYPE_INT_RGB);

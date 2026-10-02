@@ -1,4 +1,3 @@
-# Blueprint de Render: https://render.com/docs/blueprint-spec
 services:
   - type: web
     name: pixelforge

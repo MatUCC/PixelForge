@@ -1,57 +1,56 @@
-// PixelForge frontend: vanilla JS, sin dependencias.
-// Habla con el API Java (ver README, sección "API para el frontend").
-
 const API = (window.PIXELFORGE_API_URL || (location.protocol === 'file:' ? 'http://localhost:8080' : ''))
   .replace(/\/$/, '');
 
-const BASE_COST = 500;          // TreatmentType.BASE
+const BASE_COST = 500;
 const BASE_SECONDS = 1;
-const DISCOUNT_THRESHOLD = 4;   // PipelineBuilder.DISCOUNT_THRESHOLD
+const DISCOUNT_THRESHOLD = 4;
 const MAX_BYTES = 5 * 1024 * 1024;
 
-// Nombres en español para mostrar (el API devuelve los nombres en inglés).
 const LABELS = {
-  REMOVE_BACKGROUND: { icon: '✂️', name: 'Quitar fondo', hint: 'Vuelve transparente el fondo' },
-  RESIZE: { icon: '📐', name: 'Redimensionar', hint: 'Ajusta a 1080×1080' },
-  COLOR_FILTER: { icon: '🎨', name: 'Filtro de color', hint: 'Grises, brillo o contraste' },
-  WATERMARK: { icon: '💧', name: 'Marca de agua', hint: 'Escribe el nombre de tu tienda' },
-  BORDER: { icon: '🖼️', name: 'Borde', hint: 'Marco de color' },
-  COMPRESSION: { icon: '🗜️', name: 'Compresión web', hint: 'JPEG liviano · siempre de último' },
+  REMOVE_BACKGROUND: { icon: '✂️', name: 'Remove background', hint: 'Makes the background transparent' },
+  RESIZE: { icon: '📐', name: 'Resize', hint: 'Fits the photo into 1080×1080' },
+  COLOR_FILTER: { icon: '🎨', name: 'Color filter', hint: 'Grayscale, brightness or contrast' },
+  WATERMARK: { icon: '💧', name: 'Watermark', hint: 'Writes your store name' },
+  BORDER: { icon: '🖼️', name: 'Border', hint: 'Colored frame' },
+  COMPRESSION: { icon: '🗜️', name: 'Web compression', hint: 'Light JPEG · always last' },
 };
 const label = (t) => LABELS[t.id] || { icon: '✨', name: t.name, hint: '' };
 
-const FILTERS = { GRAYSCALE: 'Escala de grises', BRIGHTEN: 'Más brillo', HIGH_CONTRAST: 'Alto contraste' };
+const FILTERS = { GRAYSCALE: 'Grayscale', BRIGHTEN: 'Brighten', HIGH_CONTRAST: 'High contrast' };
+const STYLE_DEFAULT_TYPES = ['COLOR_FILTER', 'BORDER'];
 
 const state = {
-  catalog: [],     // [{id, name, cost, seconds, parameterHint}]
-  pipeline: [],    // [{id, param}]
+  catalog: [],
+  presets: [],
+  styles: [],
+  pipeline: [],
   file: null,
 };
 
 const $ = (id) => document.getElementById(id);
-const money = (n) => (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('es-CO');
-
-// ---------- API ----------
+const money = (n) => (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US');
 
 async function api(path, options) {
   const res = await fetch(API + path, options);
-  const data = await res.json().catch(() => ({ error: 'Respuesta inválida del servidor' }));
+  const data = await res.json().catch(() => ({ error: 'Invalid server response' }));
   if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
   return data;
 }
 
-// ---------- Foto ----------
+function storeName() {
+  return $('storeName').value.trim() || 'My Store';
+}
 
 function setFile(file) {
   showError('');
   if (!file) return;
-  if (!['image/png', 'image/jpeg'].includes(file.type)) return showError('Solo se aceptan imágenes JPG o PNG.');
-  if (file.size > MAX_BYTES) return showError('La imagen supera los 5 MB.');
+  if (!['image/png', 'image/jpeg'].includes(file.type)) return showError('Only JPG or PNG images are accepted.');
+  if (file.size > MAX_BYTES) return showError('The image is larger than 5 MB.');
   state.file = file;
   const preview = $('preview');
   preview.src = URL.createObjectURL(file);
   preview.hidden = false;
-  $('dropText').textContent = file.name + ' · clic para cambiarla';
+  $('dropText').textContent = file.name + ' · click to change it';
   $('dropIcon').hidden = true;
   render();
 }
@@ -70,11 +69,9 @@ function setupDropzone() {
   zone.addEventListener('drop', (e) => setFile(e.dataTransfer.files[0]));
 }
 
-// ---------- Catálogo y pipeline ----------
-
 function defaultParam(id) {
   if (id === 'COLOR_FILTER') return 'GRAYSCALE';
-  if (id === 'WATERMARK') return 'Mi Tienda';
+  if (id === 'WATERMARK') return storeName();
   if (id === 'BORDER') return '000000';
   return null;
 }
@@ -98,11 +95,50 @@ function renderCatalog() {
   });
 }
 
+function renderPresets() {
+  const box = $('presets');
+  box.innerHTML = '';
+  state.presets.forEach((preset) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset';
+    const title = document.createElement('strong');
+    title.textContent = '📦 ' + preset.name;
+    const description = document.createElement('small');
+    description.textContent = preset.description;
+    btn.append(title, description);
+    btn.addEventListener('click', () => applyPreset(preset.id));
+    box.appendChild(btn);
+  });
+}
+
+async function applyPreset(id) {
+  showError('');
+  try {
+    const preset = await api(`/api/presets/apply?id=${encodeURIComponent(id)}&store=${encodeURIComponent(storeName())}`);
+    state.pipeline = preset.treatments.map((t) => ({ id: t.id, param: t.parameter === null ? '' : t.parameter }));
+    render();
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+function renderStyles() {
+  const select = $('styleSelect');
+  select.innerHTML = '';
+  state.styles.forEach((s) => select.add(new Option(s.name, s.id)));
+}
+
 function paramEditor(item) {
+  if (item.param === '' && STYLE_DEFAULT_TYPES.includes(item.id)) {
+    const text = document.createElement('span');
+    text.className = 'style-default';
+    text.textContent = 'uses the style default';
+    return text;
+  }
   let input;
   if (item.id === 'COLOR_FILTER') {
     input = document.createElement('select');
-    Object.entries(FILTERS).forEach(([value, label]) => input.add(new Option(label, value, false, value === item.param)));
+    Object.entries(FILTERS).forEach(([value, text]) => input.add(new Option(text, value, false, value === item.param)));
   } else if (item.id === 'BORDER') {
     input = document.createElement('input');
     input.type = 'color';
@@ -112,7 +148,7 @@ function paramEditor(item) {
     input.type = 'text';
     input.maxLength = 40;
     input.value = item.param;
-    input.placeholder = 'Texto';
+    input.placeholder = 'Text';
   } else {
     return null;
   }
@@ -142,8 +178,8 @@ function renderPipeline() {
 
     const actions = document.createElement('span');
     actions.className = 'actions';
-    [['↑', () => move(i, -1), 'Subir'], ['↓', () => move(i, 1), 'Bajar'],
-     ['✕', () => { state.pipeline.splice(i, 1); render(); }, 'Quitar']].forEach(([text, fn, title]) => {
+    [['↑', () => move(i, -1), 'Move up'], ['↓', () => move(i, 1), 'Move down'],
+     ['✕', () => { state.pipeline.splice(i, 1); render(); }, 'Remove']].forEach(([text, fn, title]) => {
       const b = document.createElement('button');
       b.textContent = text;
       b.title = title;
@@ -159,10 +195,10 @@ function renderPipeline() {
 function validationMessage() {
   const p = state.pipeline;
   if (p.slice(0, -1).some((x) => x.id === 'COMPRESSION')) {
-    return 'La compresión debe ir de último (el JPEG pierde la transparencia).';
+    return 'Compression must be the last treatment (JPEG loses transparency).';
   }
   if (p.some((x) => x.id === 'WATERMARK' && !(x.param || '').trim())) {
-    return 'La marca de agua necesita un texto.';
+    return 'The watermark needs a text.';
   }
   return '';
 }
@@ -172,7 +208,7 @@ function renderEstimate() {
   let cost = BASE_COST + chosen.reduce((s, t) => s + t.cost, 0);
   const seconds = BASE_SECONDS + chosen.reduce((s, t) => s + t.seconds, 0);
   const discount = chosen.length >= DISCOUNT_THRESHOLD;
-  if (discount) cost -= Math.trunc(cost * 10 / 100); // igual que DiscountDecorator
+  if (discount) cost -= Math.trunc(cost * 10 / 100);
   $('estCost').textContent = money(cost);
   $('estTime').textContent = seconds + ' s';
   $('estDiscount').hidden = !discount;
@@ -188,10 +224,7 @@ function render() {
   renderEstimate();
 }
 
-// ---------- Procesar ----------
-
 function treatmentsParam() {
-  // El API separa por comas, así que se quitan del texto de la marca de agua.
   return state.pipeline
     .map((p) => (p.param ? `${p.id}:${String(p.param).replace(/,/g, ' ').trim()}` : p.id))
     .join(',');
@@ -201,9 +234,10 @@ async function processImage() {
   showError('');
   const btn = $('processBtn');
   btn.disabled = true;
-  btn.textContent = 'Procesando…';
+  btn.textContent = 'Processing…';
   try {
-    const data = await api('/api/process?treatments=' + encodeURIComponent(treatmentsParam()), {
+    const query = `treatments=${encodeURIComponent(treatmentsParam())}&style=${encodeURIComponent($('styleSelect').value)}`;
+    const data = await api('/api/process?' + query, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
       body: state.file,
@@ -213,7 +247,7 @@ async function processImage() {
   } catch (e) {
     showError(e.message);
   } finally {
-    btn.textContent = 'Procesar imagen';
+    btn.textContent = 'Process image';
     renderEstimate();
   }
 }
@@ -224,15 +258,14 @@ function showResult({ order, imageFormat, imageBase64 }) {
   $('downloadLink').href = src;
   $('downloadLink').download = `pixelforge-${order.id}.${imageFormat}`;
 
-  // Capas anidadas: layers viene de adentro hacia afuera, así que la última es la más externa.
   let inner = null;
   order.layers.forEach((layer) => {
     const box = document.createElement('div');
     if (layer.cost < 0) box.className = 'discount';
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = layer.name;
-    box.appendChild(label);
+    const title = document.createElement('div');
+    title.className = 'label';
+    title.textContent = layer.name;
+    box.appendChild(title);
     if (inner) box.appendChild(inner);
     inner = box;
   });
@@ -252,27 +285,25 @@ function showResult({ order, imageFormat, imageBase64 }) {
   $('resultCard').scrollIntoView({ behavior: 'smooth' });
 }
 
-// ---------- Historial ----------
-
 async function loadOrders() {
   try {
     const orders = await api('/api/orders');
     const body = $('ordersTable');
     body.innerHTML = '';
     if (orders.length === 0) {
-      body.innerHTML = '<tr><td colspan="5" class="muted">Sin pedidos todavía.</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="muted">No orders yet.</td></tr>';
       return;
     }
     orders.slice().reverse().forEach((o) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="num">${o.id}</td><td class="num">${new Date(o.createdAt).toLocaleString('es-CO')}</td>`
+      tr.innerHTML = `<td class="num">${o.id}</td><td class="num">${new Date(o.createdAt).toLocaleString('en-US')}</td>`
         + `<td></td><td class="num">${money(o.totalCost)}</td><td class="num">${o.totalSeconds} s</td>`;
       tr.children[2].textContent = o.description;
       body.appendChild(tr);
     });
   } catch (e) {
     $('ordersTable').innerHTML = '<tr><td colspan="5" class="error"></td></tr>';
-    $('ordersTable').querySelector('td').textContent = 'No se pudo cargar el historial: ' + e.message;
+    $('ordersTable').querySelector('td').textContent = 'The history could not be loaded: ' + e.message;
   }
 }
 
@@ -281,17 +312,20 @@ function showError(message) {
   $('error').hidden = !message;
 }
 
-// ---------- Inicio ----------
-
 async function init() {
   setupDropzone();
   $('processBtn').addEventListener('click', processImage);
   $('refreshOrders').addEventListener('click', loadOrders);
   try {
-    state.catalog = await api('/api/treatments');
+    [state.catalog, state.presets, state.styles] = await Promise.all([
+      api('/api/treatments'), api('/api/presets'), api('/api/styles'),
+    ]);
     renderCatalog();
+    renderPresets();
+    renderStyles();
   } catch (e) {
-    $('catalog').innerHTML = '<p class="error">No se pudo conectar con el backend. ¿Está corriendo el ApiServer?</p>';
+    $('catalog').innerHTML = '<p class="error">Could not connect to the backend. Is the ApiServer running?</p>';
+    $('presets').innerHTML = '';
   }
   render();
   loadOrders();

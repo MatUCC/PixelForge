@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,72 +13,78 @@
     <div class="topbar-inner">
       <div>
         <h1><span class="logo">✦</span>PixelForge</h1>
-        <p>Edición automática de fotos de producto · Patrón Decorator</p>
+        <p>Automatic product photo editing</p>
       </div>
     </div>
   </header>
 
   <main class="layout">
-    <!-- 1. Foto -->
     <section class="card">
-      <h2><span class="num">1</span>Sube la foto</h2>
+      <h2><span class="num">1</span>Upload your photo</h2>
       <label id="dropzone" class="dropzone">
         <input id="photo" type="file" accept="image/png,image/jpeg" hidden>
         <img id="preview" alt="" hidden>
         <span class="icon" id="dropIcon">🖼️</span>
-        <span id="dropText">Arrastra una imagen JPG o PNG aquí, o haz clic para elegirla (máx. 5 MB)</span>
+        <span id="dropText">Drag a JPG or PNG image here, or click to choose one (max. 5 MB)</span>
       </label>
     </section>
-
-    <!-- 2. Tratamientos -->
     <section class="card">
-      <h2><span class="num">2</span>Elige los tratamientos (en orden)</h2>
-      <div id="catalog" class="catalog"><p class="muted">Cargando catálogo…</p></div>
+      <h2><span class="num">2</span>Choose your treatments (in order)</h2>
+      <div class="options">
+        <label>Visual style
+          <select id="styleSelect"></select>
+        </label>
+        <label>Store name
+          <input id="storeName" type="text" maxlength="40" value="My Store">
+        </label>
+      </div>
 
-      <h3>Tu pipeline</h3>
+      <h3>Ready-made packages</h3>
+      <div id="presets" class="catalog"><p class="muted">Loading packages…</p></div>
+
+      <h3>Or build it step by step</h3>
+      <div id="catalog" class="catalog"><p class="muted">Loading catalog…</p></div>
+
+      <h3>Your pipeline</h3>
       <ol id="pipeline" class="pipeline"></ol>
-      <p id="emptyPipeline" class="muted">Aún no has agregado tratamientos.</p>
+      <p id="emptyPipeline" class="muted">You have not added any treatments yet.</p>
       <p id="warning" class="warning" hidden></p>
 
       <div class="estimate">
-        <div><span>Costo estimado</span><strong id="estCost">$0</strong></div>
-        <div><span>Tiempo</span><strong id="estTime">0 s</strong></div>
-        <div id="estDiscount" class="badge" hidden>10 % de descuento</div>
+        <div><span>Estimated cost</span><strong id="estCost">$0</strong></div>
+        <div><span>Time</span><strong id="estTime">0 s</strong></div>
+        <div id="estDiscount" class="badge" hidden>10% discount</div>
       </div>
 
-      <button id="processBtn" class="primary" disabled>Procesar imagen</button>
+      <button id="processBtn" class="primary" disabled>Process image</button>
       <p id="error" class="error" hidden></p>
     </section>
-
-    <!-- 3. Resultado -->
     <section id="resultCard" class="card wide" hidden>
-      <h2><span class="num">3</span>Resultado</h2>
+      <h2><span class="num">3</span>Result</h2>
       <div class="result">
         <div class="result-image">
-          <img id="resultImg" class="checker" alt="Imagen procesada">
-          <a id="downloadLink" class="primary button" download>Descargar</a>
+          <img id="resultImg" class="checker" alt="Processed image">
+          <a id="downloadLink" class="primary button" download>Download</a>
         </div>
         <div>
-          <h3>Capas del decorador</h3>
+          <h3>Decorator layers</h3>
           <div id="layersNested" class="nested"></div>
-          <h3>Desglose de costos</h3>
+          <h3>Cost breakdown</h3>
           <table class="table">
-            <thead><tr><th>Capa</th><th>Costo</th><th>Tiempo</th></tr></thead>
+            <thead><tr><th>Layer</th><th>Cost</th><th>Time</th></tr></thead>
             <tbody id="layersTable"></tbody>
             <tfoot><tr><th>Total</th><th id="totalCost"></th><th id="totalTime"></th></tr></tfoot>
           </table>
         </div>
       </div>
     </section>
-
-    <!-- 4. Historial -->
     <section class="card wide">
       <div class="row">
-        <h2>Historial de pedidos</h2>
-        <button id="refreshOrders">Actualizar</button>
+        <h2>Order history</h2>
+        <button id="refreshOrders">Refresh</button>
       </div>
       <table class="table">
-        <thead><tr><th>#</th><th>Fecha</th><th>Descripción</th><th>Total</th><th>Tiempo</th></tr></thead>
+        <thead><tr><th>#</th><th>Date</th><th>Description</th><th>Total</th><th>Tiempo</th></tr></thead>
         <tbody id="ordersTable"></tbody>
       </table>
     </section>
