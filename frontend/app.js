@@ -41,6 +41,7 @@ function setFile(file) {
   preview.src = URL.createObjectURL(file);
   preview.hidden = false;
   $('dropText').textContent = file.name + ' · clic para cambiarla';
+  $('dropIcon').hidden = true;
   render();
 }
 

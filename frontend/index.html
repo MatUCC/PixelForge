@@ -10,24 +10,29 @@
 </head>
 <body>
   <header class="topbar">
-    <h1>Pixel<span>Forge</span></h1>
-    <p>Edición automática de fotos de producto · Patrón Decorator</p>
+    <div class="topbar-inner">
+      <div>
+        <h1><span class="logo">✦</span>PixelForge</h1>
+        <p>Edición automática de fotos de producto · Patrón Decorator</p>
+      </div>
+    </div>
   </header>
 
   <main class="layout">
     <!-- 1. Foto -->
     <section class="card">
-      <h2>1. Sube la foto</h2>
+      <h2><span class="num">1</span>Sube la foto</h2>
       <label id="dropzone" class="dropzone">
         <input id="photo" type="file" accept="image/png,image/jpeg" hidden>
         <img id="preview" alt="" hidden>
+        <span class="icon" id="dropIcon">🖼️</span>
         <span id="dropText">Arrastra una imagen JPG o PNG aquí, o haz clic para elegirla (máx. 5 MB)</span>
       </label>
     </section>
 
     <!-- 2. Tratamientos -->
     <section class="card">
-      <h2>2. Elige los tratamientos (en orden)</h2>
+      <h2><span class="num">2</span>Elige los tratamientos (en orden)</h2>
       <div id="catalog" class="catalog"><p class="muted">Cargando catálogo…</p></div>
 
       <h3>Tu pipeline</h3>
@@ -47,10 +52,10 @@
 
     <!-- 3. Resultado -->
     <section id="resultCard" class="card wide" hidden>
-      <h2>3. Resultado</h2>
+      <h2><span class="num">3</span>Resultado</h2>
       <div class="result">
         <div class="result-image">
-          <img id="resultImg" alt="Imagen procesada">
+          <img id="resultImg" class="checker" alt="Imagen procesada">
           <a id="downloadLink" class="primary button" download>Descargar</a>
         </div>
         <div>
