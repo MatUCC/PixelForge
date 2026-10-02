@@ -114,6 +114,13 @@ src/com/pixelforge/
     └── Json.java              Convierte objetos a JSON
 test/com/pixelforge/
 └── DecoratorTests.java        6 pruebas (sin JUnit)
+frontend/                      Interfaz web (HTML + CSS + JS, sin dependencias)
+├── index.html
+├── app.js                     Sube la foto, arma el pipeline, muestra capas y costos
+├── styles.css
+└── config.js                  URL del backend (vacío = mismo servidor)
+Dockerfile                     Imagen de producción (compila, corre pruebas y sirve API + frontend)
+render.yaml                    Blueprint para desplegar en Render
 ```
 
 Solo usa Java estándar (JDK 11 o superior). **No necesita Maven ni librerías.**
@@ -123,14 +130,14 @@ Solo usa Java estándar (JDK 11 o superior). **No necesita Maven ni librerías.*
 **Desde IntelliJ / VS Code:** abrir la carpeta, marcar `src` y `test` como carpetas de código fuente, y ejecutar:
 - `Main` → demo por consola; guarda imágenes en la carpeta `output/`
 - `DecoratorTests` → corre las pruebas
-- `ApiServer` → levanta el API en `http://localhost:8080`
+- `ApiServer` → levanta el API **y el frontend** en `http://localhost:8080` (ejecutar desde la raíz del proyecto para que encuentre la carpeta `frontend/`)
 
 **Desde la terminal** (dentro de la carpeta del proyecto):
 ```bash
 javac -d out $(find src test -name "*.java")
 java -cp out com.pixelforge.Main            # demo
 java -cp out com.pixelforge.DecoratorTests  # pruebas
-java -cp out com.pixelforge.api.ApiServer   # API para el frontend
+java -cp out com.pixelforge.api.ApiServer   # API + frontend en http://localhost:8080
 ```
 En Windows (PowerShell), compilar con:
 `javac -d out (Get-ChildItem -Recurse -Filter *.java src,test).FullName`
@@ -138,6 +145,9 @@ En Windows (PowerShell), compilar con:
 ## 6. API para el frontend
 
 CORS está habilitado, así que el frontend puede abrirse desde cualquier puerto o como archivo.
+
+### `GET /api/health`
+Responde `{"status":"ok"}`. Lo usa la plataforma de hosting para saber si el servicio está vivo.
 
 ### `GET /api/treatments`
 Catálogo para construir el menú dinámicamente:
@@ -198,3 +208,20 @@ console.log(data.order.layers); // desglose por capa
 
 No hay que modificar `BaseImage` ni los demás decoradores (principio **abierto/cerrado**).
 La prueba `newDecoratorWorksWithoutChangingExistingClasses` lo demuestra.
+
+## 8. Variables de entorno
+
+| Variable | Por defecto | Para qué |
+|---|---|---|
+| `PORT` | `8080` | Puerto donde escucha (Render/Railway lo asignan solos) |
+| `FRONTEND_DIR` | `frontend` | Carpeta con `index.html` |
+| `ALLOWED_ORIGIN` | `*` | Valor de `Access-Control-Allow-Origin` (pon la URL de tu frontend si lo publicas aparte) |
+
+## 9. Despliegue con Docker
+
+```bash
+docker build -t pixelforge .          # compila y corre las 6 pruebas (si fallan, no se construye)
+docker run -p 8080:8080 pixelforge    # abrir http://localhost:8080
+```
+
+> El historial de pedidos vive en memoria: se borra al reiniciar el servidor.
