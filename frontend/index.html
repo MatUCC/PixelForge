@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelForge · Patrón Decorator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <span class="brand-mark">PF</span>
+        <div>
+            <h1>PixelForge</h1>
+            <p>Edición de fotos de producto · Patrón Decorator</p>
+        </div>
+    </div>
+    <span id="server-status" class="status status-unknown">Conectando…</span>
+</header>
+
+<main class="layout">
+
+    <!-- Column 1: upload + catalog + chosen pipeline -->
+    <section class="panel">
+        <h2><span class="step">1</span> Sube la foto</h2>
+        <label id="drop-zone" class="drop-zone">
+            <input id="file-input" type="file" accept="image/png,image/jpeg" hidden>
+            <span id="drop-text">Arrastra una imagen aquí o haz clic<br><small>JPG o PNG · máx. 5 MB</small></span>
+        </label>
+
+        <h2><span class="step">2</span> Elige tratamientos</h2>
+        <div id="catalog" class="catalog"></div>
+
+        <h2><span class="step">3</span> Ordena las capas</h2>
+        <p class="hint">Se aplican de arriba hacia abajo. Arrastra para cambiar el orden.</p>
+        <ol id="pipeline" class="pipeline"></ol>
+        <p id="pipeline-empty" class="empty">Aún no has agregado tratamientos.</p>
+
+        <div class="estimate">
+            <span>Estimado</span>
+            <strong id="estimate-cost">$500</strong>
+            <span id="estimate-time">1 s</span>
+        </div>
+        <p id="discount-note" class="discount-note" hidden>Con 4 o más tratamientos se aplica 10 % de descuento.</p>
+
+        <button id="process-btn" class="primary" disabled>Procesar imagen</button>
+        <p id="error-box" class="error" hidden></p>
+    </section>
+
+    <!-- Column 2: results -->
+    <section class="panel">
+        <h2>Antes / Después</h2>
+        <div class="compare">
+            <figure>
+                <div class="frame checker"><img id="before-img" alt=""><span class="placeholder">Original</span></div>
+                <figcaption>Original</figcaption>
+            </figure>
+            <figure>
+                <div class="frame checker"><img id="after-img" alt=""><span class="placeholder">Resultado</span></div>
+                <figcaption>Resultado <a id="download-link" class="download" hidden>Descargar</a></figcaption>
+            </figure>
+        </div>
+
+        <h2>Así se envolvieron los decoradores</h2>
+        <p class="hint">Cada capa envuelve a la anterior. La de afuera es la última que se aplicó.</p>
+        <div id="layers-view" class="layers-view"><p class="empty">Procesa una imagen para ver las capas.</p></div>
+
+        <h2>Desglose por capa</h2>
+        <table class="breakdown">
+            <thead><tr><th>#</th><th>Capa</th><th>Costo</th><th>Tiempo</th></tr></thead>
+            <tbody id="breakdown-body"><tr><td colspan="4" class="empty">—</td></tr></tbody>
+            <tfoot><tr><td></td><td>Total</td><td id="total-cost">—</td><td id="total-time">—</td></tr></tfoot>
+        </table>
+    </section>
+
+    <!-- Column 3: order history -->
+    <section class="panel">
+        <h2>Historial de pedidos <button id="refresh-orders" class="link">Actualizar</button></h2>
+        <ul id="orders" class="orders"><li class="empty">Sin pedidos todavía.</li></ul>
+    </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
