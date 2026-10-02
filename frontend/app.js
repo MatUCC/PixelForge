@@ -9,6 +9,17 @@ const BASE_SECONDS = 1;
 const DISCOUNT_THRESHOLD = 4;   // PipelineBuilder.DISCOUNT_THRESHOLD
 const MAX_BYTES = 5 * 1024 * 1024;
 
+// Nombres en español para mostrar (el API devuelve los nombres en inglés).
+const LABELS = {
+  REMOVE_BACKGROUND: { icon: '✂️', name: 'Quitar fondo', hint: 'Vuelve transparente el fondo' },
+  RESIZE: { icon: '📐', name: 'Redimensionar', hint: 'Ajusta a 1080×1080' },
+  COLOR_FILTER: { icon: '🎨', name: 'Filtro de color', hint: 'Grises, brillo o contraste' },
+  WATERMARK: { icon: '💧', name: 'Marca de agua', hint: 'Escribe el nombre de tu tienda' },
+  BORDER: { icon: '🖼️', name: 'Borde', hint: 'Marco de color' },
+  COMPRESSION: { icon: '🗜️', name: 'Compresión web', hint: 'JPEG liviano · siempre de último' },
+};
+const label = (t) => LABELS[t.id] || { icon: '✨', name: t.name, hint: '' };
+
 const FILTERS = { GRAYSCALE: 'Escala de grises', BRIGHTEN: 'Más brillo', HIGH_CONTRAST: 'Alto contraste' };
 
 const state = {
@@ -72,8 +83,13 @@ function renderCatalog() {
   const box = $('catalog');
   box.innerHTML = '';
   state.catalog.forEach((t) => {
+    const l = label(t);
     const btn = document.createElement('button');
-    btn.innerHTML = `+ ${t.name}<small>${money(t.cost)} · ${t.seconds}s</small>`;
+    btn.className = 'treatment';
+    btn.title = l.hint;
+    btn.innerHTML = `<span class="t-icon">${l.icon}</span>`
+      + `<span class="t-body"><strong>${l.name}</strong><small>${l.hint}</small></span>`
+      + `<span class="t-price">${money(t.cost)}<small>${t.seconds} s</small></span>`;
     btn.addEventListener('click', () => {
       state.pipeline.push({ id: t.id, param: defaultParam(t.id) });
       render();
@@ -120,7 +136,7 @@ function renderPipeline() {
   state.pipeline.forEach((item, i) => {
     const t = state.catalog.find((c) => c.id === item.id);
     const li = document.createElement('li');
-    li.innerHTML = `<span class="step">${i + 1}</span><span class="name">${t.name}</span>`;
+    li.innerHTML = `<span class="step">${i + 1}</span><span class="name">${label(t).icon} ${label(t).name}</span>`;
     const editor = paramEditor(item);
     if (editor) li.appendChild(editor);
 
